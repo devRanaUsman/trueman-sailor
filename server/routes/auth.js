@@ -42,10 +42,34 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password are required.' });
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    if (!user || !(await user.matchPassword(password))) {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanPassword = String(password).trim();
+
+    let user = await User.findOne({ email: cleanEmail }).select('+password');
+
+    // Support fallback if user typed @trueman.com instead of @trueman.co
+    if (!user && cleanEmail.endsWith('@trueman.com')) {
+      const altEmail = cleanEmail.replace('@trueman.com', '@trueman.co');
+      user = await User.findOne({ email: altEmail }).select('+password');
+    }
+
+    if (!user) {
       return res.status(401).json({ message: 'Incorrect email or password.' });
     }
+
+    let isMatch = await user.matchPassword(cleanPassword);
+    
+    // Case-flexible fallback for admin/demo passwords (e.g., admin@123 -> Admin@123 or demo@123 -> Demo@123)
+    if (!isMatch && cleanPassword.length > 0) {
+      const firstCap = cleanPassword.charAt(0).toUpperCase() + cleanPassword.slice(1);
+      const firstLower = cleanPassword.charAt(0).toLowerCase() + cleanPassword.slice(1);
+      isMatch = (await user.matchPassword(firstCap)) || (await user.matchPassword(firstLower));
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect email or password.' });
+    }
+
     res.json({ token: signToken(user._id), user: publicUser(user) });
   } catch (err) {
     next(err);

@@ -246,7 +246,14 @@ function mockExistingModelClass(RealModel, name) {
 
   RealModel.prototype.save = async function () {
     const schema = RealModel.schema;
-    if (schema && schema._pres && schema._pres.save) {
+    if (schema && schema.s && schema.s.hooks && typeof schema.s.hooks.execPre === 'function') {
+      await new Promise((resolve, reject) => {
+        schema.s.hooks.execPre('save', this, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    } else if (schema && schema._pres && schema._pres.save) {
       for (const fn of schema._pres.save) {
         await new Promise((resolve, reject) => {
           fn.call(this, (err) => {
@@ -290,15 +297,15 @@ export async function connectDB() {
   
   try {
     console.log(`Connecting to MongoDB at ${uri}...`);
-    // Attempt real connection with a 4-second timeout to avoid long hangs
-    await originalConnect.call(mongoose, uri, { serverSelectionTimeoutMS: 4000 });
+    // Attempt real connection with a 15-second timeout to avoid premature fallback on Atlas handshakes
+    await originalConnect.call(mongoose, uri, { serverSelectionTimeoutMS: 15000 });
     console.log(`MongoDB connected: ${mongoose.connection.host}`);
     
-    // Seed if empty
-    const Service = mongoose.model('Service');
-    const count = await Service.countDocuments({});
-    if (count === 0) {
-      console.log('Database is empty. Seeding initial data...');
+    // Seed if admin missing
+    const User = mongoose.model('User');
+    const adminUser = await User.findOne({ email: 'admin@trueman.co' });
+    if (!adminUser) {
+      console.log('Admin account missing. Seeding initial data...');
       const { seedData } = await import('../seed_helper.js');
       await seedData();
       console.log('Database seeded successfully.');
