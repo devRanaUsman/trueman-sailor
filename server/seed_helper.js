@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import User from './models/User.js';
 import Service from './models/Service.js';
 import Stylist from './models/Stylist.js';
@@ -23,18 +24,22 @@ export async function seedData() {
     Review.deleteMany({}),
   ]);
 
+  // Pre-hash passwords so they work in both real MongoDB and in-memory mock modes
+  const adminHash = await bcrypt.hash('Admin@123', 10);
+  const demoHash = await bcrypt.hash('Demo@123', 10);
+
   const admin = await User.create({
     name: 'Shop Manager',
     email: 'admin@trueman.co',
     phone: '800-456-7890',
-    password: 'Admin@123',
+    password: adminHash,
     role: 'admin',
   });
   const demo = await User.create({
     name: 'Demo Client',
     email: 'demo@trueman.co',
     phone: '555-010-2233',
-    password: 'Demo@123',
+    password: demoHash,
   });
 
   const services = await Service.insertMany([

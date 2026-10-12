@@ -108,8 +108,8 @@ export default function Account() {
     }
   };
 
-  const Card = ({ b, i }) => (
-    <Reveal delay={i * 60} className={`ticket booking-card status-${b.status}`}>
+  const Card = ({ b, i, isUpcoming }) => (
+    <Reveal delay={i * 60} className={`ticket booking-card status-${b.status}${isUpcoming ? ' upcoming-card' : ''}`}>
       <div className="booking-card-head">
         <div>
           <h3 className="h4">{b.serviceName}</h3>
@@ -179,7 +179,7 @@ export default function Account() {
               <h2 className="h3 rule">Upcoming</h2>
               <div className="booking-list">
                 {upcoming.map((b, i) => (
-                  <Card key={b._id} b={b} i={i} />
+                  <Card key={b._id} b={b} i={i} isUpcoming />
                 ))}
               </div>
             </>

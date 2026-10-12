@@ -20,12 +20,17 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  if (this.password && !this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
   next();
 });
 
 userSchema.methods.matchPassword = function (entered) {
+  if (!this.password) return false;
+  if (!this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
+    return entered === this.password;
+  }
   return bcrypt.compare(entered, this.password);
 };
 
